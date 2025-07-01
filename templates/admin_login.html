@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔐 Admin Login - YouTube Subtitle Downloader</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #121212;
+            color: #ffffff;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: #1e1e1e;
+            border: 1px solid #333333;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 10px;
+        }
+
+        .login-header p {
+            color: #cccccc;
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #ffffff;
+            font-size: 0.9rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #333333;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: #2a2a2a;
+            color: #ffffff;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #555555;
+            background: #333333;
+        }
+
+        .form-input::placeholder {
+            color: #888888;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 15px 25px;
+            background: #000000;
+            color: #ffffff;
+            border: 2px solid #333333;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .login-btn:hover {
+            background: #333333;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .login-btn:active {
+            transform: translateY(0);
+        }
+
+        .error-message {
+            background: #2e1a1a;
+            color: #ff6b6b;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border: 1px solid #5a2d2d;
+        }
+
+        .login-footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #333333;
+        }
+
+        .login-footer p {
+            color: #cccccc;
+            font-size: 0.85rem;
+        }
+
+        .login-footer a {
+            color: #ffffff;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .login-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Icon styling */
+        .input-icon {
+            position: relative;
+        }
+
+        .input-icon .form-input {
+            padding-left: 50px;
+        }
+
+        .input-icon::before {
+            content: attr(data-icon);
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.1rem;
+            color: #888888;
+            z-index: 1;
+        }
+
+        /* Responsive design */
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 30px 25px;
+                margin: 15px;
+            }
+            
+            .login-header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .form-input {
+                padding: 12px 18px;
+                font-size: 0.95rem;
+            }
+            
+            .login-btn {
+                padding: 12px 20px;
+                font-size: 1rem;
+            }
+        }
+
+        /* Loading state */
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-loading {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Security note */
+        .security-note {
+            background: #1a1a2e;
+            border: 1px solid #2d2d5a;
+            color: #87ceeb;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>🔐 Admin Login</h1>
+            <p>YouTube Subtitle Downloader</p>
+        </div>
+
+        {% if error %}
+        <div class="error-message">
+            ⚠️ {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST" id="loginForm">
+            <div class="form-group">
+                <label for="username">👤 Tên đăng nhập:</label>
+                <div class="input-icon" data-icon="👤">
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        class="form-input"
+                        placeholder="Nhập tên đăng nhập"
+                        required
+                        autocomplete="username"
+                    >
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">🔑 Mật khẩu:</label>
+                <div class="input-icon" data-icon="🔑">
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        class="form-input"
+                        placeholder="Nhập mật khẩu"
+                        required
+                        autocomplete="current-password"
+                    >
+                </div>
+            </div>
+
+            <button type="submit" class="login-btn" id="loginBtn">
+                <span class="btn-text">🚪 Đăng nhập</span>
+                <span class="btn-loading">
+                    <span class="spinner"></span>
+                    Đang xử lý...
+                </span>
+            </button>
+        </form>
+
+        <div class="security-note">
+            🔒 Phiên đăng nhập được bảo mật với HTTPS
+        </div>
+
+        <div class="login-footer">
+            <p>
+                <a href="/">← Quay về trang chủ</a>
+            </p>
+            <p style="margin-top: 10px; font-size: 0.8rem;">
+                © 2024 YouTube Subtitle Downloader
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Handle form submission with loading state
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            const btn = document.getElementById('loginBtn');
+            const btnText = btn.querySelector('.btn-text');
+            const btnLoading = btn.querySelector('.btn-loading');
+            
+            // Show loading state
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'flex';
+            btn.disabled = true;
+            
+            // Allow form to submit naturally
+            // Loading state will persist until page reload/redirect
+        });
+
+        // Auto-focus username field
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('username').focus();
+        });
+
+        // Handle Enter key on password field
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('loginForm').submit();
+            }
+        });
+
+        // Clear error message on input
+        const inputs = document.querySelectorAll('.form-input');
+        inputs.forEach(input => {
+            input.addEventListener('input', function() {
+                const errorMsg = document.querySelector('.error-message');
+                if (errorMsg) {
+                    errorMsg.style.opacity = '0.5';
+                }
+            });
+        });
+
+        // Password visibility toggle (optional enhancement)
+        function togglePasswordVisibility() {
+            const passwordField = document.getElementById('password');
+            const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordField.setAttribute('type', type);
+        }
+
+        // Add double-click to show password temporarily
+        document.getElementById('password').addEventListener('dblclick', function() {
+            const originalType = this.type;
+            this.type = 'text';
+            setTimeout(() => {
+                this.type = originalType;
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

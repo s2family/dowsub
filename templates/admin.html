@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Admin Dashboard - YouTube Subtitle Downloader</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f8f9fa;
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            background: #495057;
+            color: white;
+            min-height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: #343a40;
+            border-bottom: 1px solid #6c757d;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .sidebar-menu {
+            padding: 20px 0;
+        }
+
+        .menu-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            border: none;
+            background: none;
+            color: white;
+            text-align: left;
+            width: 100%;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .menu-item:hover {
+            background: #6c757d;
+        }
+
+        .menu-item.active {
+            background: #007bff;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 250px;
+            flex: 1;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            background: #dc3545;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            transition: background 0.2s ease;
+        }
+
+        .logout-btn:hover {
+            background: #c82333;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .stat-icon.users { background: #6f42c1; }
+        .stat-icon.downloads { background: #e83e8c; }
+        .stat-icon.videos { background: #17a2b8; }
+        .stat-icon.banners { background: #28a745; }
+
+        .stat-info h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+
+        .stat-info p {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        /* Content Sections */
+        .content-section {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-header h2 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #1e7e34;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.9rem;
+        }
+
+        .table td {
+            font-size: 0.9rem;
+        }
+
+        .table tr:hover {
+            background: #f8f9fa;
+        }
+
+        /* Status badges */
+        .status-online {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .status-offline {
+            color: #dc3545;
+            font-weight: 600;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6c757d;
+        }
+
+        .close:hover {
+            color: #495057;
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* Action buttons */
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Loading spinner */
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>🔧 Admin Panel</h2>
+        </div>
+        <div class="sidebar-menu">
+            <button class="menu-item active" onclick="showSection('dashboard')">
+                📊 Dashboard
+            </button>
+            <button class="menu-item" onclick="showSection('visitors')">
+                👥 Visitors
+            </button>
+            <button class="menu-item" onclick="showSection('banners')">
+                📢 Banners
+            </button>
+            <button class="menu-item" onclick="showSection('downloads')">
+                📥 Downloads
+            </button>
+            <button class="menu-item" onclick="showSection('settings')">
+                ⚙️ Settings
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="header">
+            <h1>Admin Dashboard</h1>
+            <div>
+                <span>Xin chào, <strong>{{ session.admin_username }}</strong></span>
+                <a href="/admin/logout" class="logout-btn">🚪 Đăng xuất</a>
+            </div>
+        </div>
+
+        <!-- Dashboard Section -->
+        <div id="dashboard-section" class="content-section">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon users">👥</div>
+                    <div class="stat-info">
+                        <h3 id="activeVisitors">--</h3>
+                        <p>Người dùng online</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon downloads">📥</div>
+                    <div class="stat-info">
+                        <h3 id="todayDownloads">--</h3>
+                        <p>Lượt tải hôm nay</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon videos">🎬</div>
+                    <div class="stat-info">
+                        <h3 id="totalVideos">--</h3>
+                        <p>Tổng video</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon banners">📢</div>
+                    <div class="stat-info">
+                        <h3 id="activeBanners">--</h3>
+                        <p>Banner hoạt động</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visitors Section -->
+        <div id="visitors-section" class="content-section" style="display: none;">
+            <div class="section-header">
+                <h2>👥 Quản lý Visitors</h2>
+                <button class="btn btn-secondary" onclick="refreshVisitors()">🔄 Refresh</button>
+            </div>
+            <div class="table-container">
+                <table class="table" id="visitorsTable">
+                    <thead>
+                        <tr>
+                            <th>Session ID</th>
+                            <th>IP Address</th>
+                            <th>User Agent</th>
+                            <th>First Visit</th>
+                            <th>Last Activity</th>
+                            <th>Page Views</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: #6c757d;">
+                                Đang tải dữ liệu...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Banners Section -->
+        <div id="banners-section" class="content-section" style="display: none;">
+            <div class="section-header">
+                <h2>📢 Quản lý Banners</h2>
+                <div>
+                    <button class="btn btn-primary" onclick="openBannerModal()">➕ Thêm Banner</button>
+                    <button class="btn btn-secondary" onclick="refreshBanners()">🔄 Refresh</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="table" id="bannersTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Tiêu đề</th>
+                            <th>Vị trí</th>
+                            <th>Clicks</th>
+                            <th>Trạng thái</th>
+                            <th>Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: #6c757d;">
+                                Đang tải dữ liệu...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Downloads Section -->
+        <div id="downloads-section" class="content-section" style="display: none;">
+            <div class="section-header">
+                <h2>📥 Thống kê Downloads</h2>
+                <button class="btn btn-secondary" onclick="refreshDownloads()">🔄 Refresh</button>
+            </div>
+            <div class="table-container">
+                <table class="table" id="downloadsTable">
+                    <thead>
+                        <tr>
+                            <th>Video Title</th>
+                            <th>Format</th>
+                            <th>Download Count</th>
+                            <th>Last Download</th>
+                            <th>Video URL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #6c757d;">
+                                Đang tải dữ liệu...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Settings Section -->
+        <div id="settings-section" class="content-section" style="display: none;">
+            <div class="section-header">
+                <h2>⚙️ Cài đặt hệ thống</h2>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                <div>
+                    <h3>🗃️ Dọn dẹp Cache</h3>
+                    <p style="margin-bottom: 15px; color: #6c757d;">
+                        Xóa các file phụ đề cũ để tiết kiệm dung lượng
+                    </p>
+                    <div class="action-buttons">
+                        <button class="btn btn-secondary" onclick="cleanupCache()">🧹 Dọn dẹp Cache</button>
+                        <button class="btn btn-danger" onclick="clearAllCache()">🗑️ Xóa tất cả</button>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>🔐 Đổi mật khẩu Admin</h3>
+                    <form id="passwordForm">
+                        <div class="form-group">
+                            <label>Mật khẩu mới:</label>
+                            <input type="password" class="form-input" id="newPassword" required placeholder="Nhập mật khẩu mới">
+                        </div>
+                        <button type="submit" class="btn btn-primary">🔑 Cập nhật</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Banner Modal -->
+    <div id="bannerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">📢 Thêm/Sửa Banner</h3>
+                <button class="close" onclick="closeBannerModal()">&times;</button>
+            </div>
+            <form id="bannerForm">
+                <input type="hidden" id="bannerId" value="">
+                
+                <div class="form-group">
+                    <label>Tiêu đề:</label>
+                    <input type="text" class="form-input" id="bannerTitle" required placeholder="Nhập tiêu đề banner">
+                </div>
+                
+                <div class="form-group">
+                    <label>Mô tả:</label>
+                    <textarea class="form-input form-textarea" id="bannerDescription" placeholder="Nhập mô tả banner"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Link URL:</label>
+                    <input type="url" class="form-input" id="bannerUrl" placeholder="https://example.com">
+                </div>
+                
+                <div class="form-group">
+                    <label>Vị trí:</label>
+                    <select class="form-input" id="bannerPosition" required>
+                        <option value="left">Trái</option>
+                        <option value="right">Phải</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Hình ảnh:</label>
+                    <input type="file" class="form-input" id="bannerImage" accept="image/*">
+                </div>
+                
+                <div class="action-buttons">
+                    <button type="submit" class="btn btn-success">💾 Lưu</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeBannerModal()">❌ Hủy</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Auto refresh data every 30 seconds
+        setInterval(loadDashboardData, 30000);
+        
+        // Load initial data
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboardData();
+            loadVisitors();
+            loadBanners();
+        });
+
+        // Show/hide sections
+        function showSection(section) {
+            // Hide all sections
+            document.querySelectorAll('.content-section').forEach(el => {
+                el.style.display = 'none';
+            });
+            
+            // Remove active class from all menu items
+            document.querySelectorAll('.menu-item').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Show selected section
+            document.getElementById(section + '-section').style.display = 'block';
+            
+            // Add active class to clicked menu item
+            event.target.classList.add('active');
+            
+            // Load data for specific section
+            if (section === 'visitors') loadVisitors();
+            if (section === 'banners') loadBanners();
+            if (section === 'downloads') loadDownloads();
+        }
+
+        // Load dashboard statistics
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('/admin/api/stats');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const stats = data.stats;
+                    document.getElementById('activeVisitors').textContent = stats.visitors.active_now;
+                    document.getElementById('todayDownloads').textContent = stats.downloads.total_downloads;
+                    document.getElementById('totalVideos').textContent = stats.downloads.unique_videos;
+                    document.getElementById('activeBanners').textContent = stats.banners.active_banners;
+                }
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
+
+        // Load visitors
+        async function loadVisitors() {
+            try {
+                const response = await fetch('/admin/api/visitors');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const tbody = document.querySelector('#visitorsTable tbody');
+                    tbody.innerHTML = '';
+                    
+                    data.visitors.forEach(visitor => {
+                        const row = tbody.insertRow();
+                        row.innerHTML = `
+                            <td>${visitor.session_id}</td>
+                            <td>${visitor.ip_address}</td>
+                            <td>${visitor.user_agent}</td>
+                            <td>${new Date(visitor.first_visit).toLocaleString('vi-VN')}</td>
+                            <td>${new Date(visitor.last_activity).toLocaleString('vi-VN')}</td>
+                            <td>${visitor.page_views}</td>
+                            <td class="${visitor.is_active ? 'status-online' : 'status-offline'}">
+                                ${visitor.is_active ? 'ONLINE' : 'OFFLINE'}
+                            </td>
+                        `;
+                    });
+                    
+                    if (data.visitors.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #6c757d;">Chưa có dữ liệu</td></tr>';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading visitors:', error);
+            }
+        }
+
+        function refreshVisitors() {
+            loadVisitors();
+        }
+
+        // Load banners
+        async function loadBanners() {
+            try {
+                const response = await fetch('/admin/api/banners');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const tbody = document.querySelector('#bannersTable tbody');
+                    tbody.innerHTML = '';
+                    
+                    data.banners.forEach(banner => {
+                        const row = tbody.insertRow();
+                        row.innerHTML = `
+                            <td>#${banner.id}</td>
+                            <td>${banner.title}</td>
+                            <td>${banner.position === 'left' ? 'Trái' : 'Phải'}</td>
+                            <td>${banner.clicks}</td>
+                            <td class="${banner.status ? 'status-online' : 'status-offline'}">
+                                ${banner.status ? 'Hoạt động' : 'Tắt'}
+                            </td>
+                            <td>
+                                <button class="btn btn-primary" onclick="editBanner(${banner.id})" style="margin-right: 5px; padding: 5px 10px; font-size: 0.8rem;">
+                                    ✏️ Sửa
+                                </button>
+                                <button class="btn btn-danger" onclick="deleteBanner(${banner.id})" style="padding: 5px 10px; font-size: 0.8rem;">
+                                    🗑️ Xóa
+                                </button>
+                            </td>
+                        `;
+                    });
+                    
+                    if (data.banners.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #6c757d;">Chưa có banner nào</td></tr>';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading banners:', error);
+            }
+        }
+
+        function refreshBanners() {
+            loadBanners();
+        }
+
+        // Load downloads (placeholder)
+        async function loadDownloads() {
+            const tbody = document.querySelector('#downloadsTable tbody');
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #6c757d;">Chức năng đang phát triển...</td></tr>';
+        }
+
+        function refreshDownloads() {
+            loadDownloads();
+        }
+
+        // Banner management functions
+        function openBannerModal() {
+            document.getElementById('bannerModal').style.display = 'block';
+            document.getElementById('bannerForm').reset();
+            document.getElementById('bannerId').value = '';
+        }
+
+        function closeBannerModal() {
+            document.getElementById('bannerModal').style.display = 'none';
+        }
+
+        // Banner form submission - Updated with better error handling
+        document.getElementById('bannerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const bannerId = document.getElementById('bannerId').value;
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            
+            // Show loading
+            submitBtn.innerHTML = '<span class="loading"></span> Đang lưu...';
+            submitBtn.disabled = true;
+            
+            try {
+                // Prepare banner data
+                const bannerData = {
+                    title: document.getElementById('bannerTitle').value,
+                    description: document.getElementById('bannerDescription').value,
+                    link_url: document.getElementById('bannerUrl').value,
+                    position: document.getElementById('bannerPosition').value,
+                    status: true
+                };
+                
+                // Handle image upload first if there's an image
+                const imageFile = document.getElementById('bannerImage').files[0];
+                if (imageFile) {
+                    console.log('Uploading image...'); // Debug log
+                    
+                    const formData = new FormData();
+                    formData.append('image', imageFile);
+                    
+                    const imageResponse = await fetch('/admin/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    console.log('Upload response status:', imageResponse.status); // Debug log
+                    
+                    if (!imageResponse.ok) {
+                        throw new Error(`Upload failed with status: ${imageResponse.status}`);
+                    }
+                    
+                    const imageResponseText = await imageResponse.text();
+                    console.log('Upload response text:', imageResponseText); // Debug log
+                    
+                    let imageData;
+                    try {
+                        imageData = JSON.parse(imageResponseText);
+                    } catch (parseError) {
+                        console.error('Failed to parse upload response:', imageResponseText);
+                        throw new Error('Server returned invalid response for image upload');
+                    }
+                    
+                    if (imageData.success) {
+                        bannerData.image_path = imageData.image_path;
+                    } else {
+                        throw new Error('Image upload failed: ' + imageData.error);
+                    }
+                }
+                
+                // Add banner ID if editing
+                if (bannerId) {
+                    bannerData.id = parseInt(bannerId);
+                }
+                
+                console.log('Saving banner data:', bannerData); // Debug log
+                
+                // Save banner
+                const method = bannerId ? 'PUT' : 'POST';
+                const bannerResponse = await fetch('/admin/api/banners', {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(bannerData)
+                });
+                
+                console.log('Banner save response status:', bannerResponse.status); // Debug log
+                
+                if (!bannerResponse.ok) {
+                    throw new Error(`Banner save failed with status: ${bannerResponse.status}`);
+                }
+                
+                const bannerResponseText = await bannerResponse.text();
+                console.log('Banner save response text:', bannerResponseText); // Debug log
+                
+                let result;
+                try {
+                    result = JSON.parse(bannerResponseText);
+                } catch (parseError) {
+                    console.error('Failed to parse banner response:', bannerResponseText);
+                    throw new Error('Server returned invalid response for banner save');
+                }
+                
+                if (result.success) {
+                    alert(result.message);
+                    closeBannerModal();
+                    loadBanners();
+                    loadDashboardData();
+                } else {
+                    throw new Error(result.error || 'Unknown error occurred');
+                }
+                
+            } catch (error) {
+                console.error('Error saving banner:', error);
+                alert('Lỗi khi lưu banner: ' + error.message);
+            } finally {
+                // Reset button
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+
+
+        // Edit banner
+        async function editBanner(bannerId) {
+            try {
+                const response = await fetch('/admin/api/banners');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const banner = data.banners.find(b => b.id === bannerId);
+                    if (banner) {
+                        document.getElementById('bannerId').value = banner.id;
+                        document.getElementById('bannerTitle').value = banner.title;
+                        document.getElementById('bannerDescription').value = banner.description || '';
+                        document.getElementById('bannerUrl').value = banner.link_url || '';
+                        document.getElementById('bannerPosition').value = banner.position;
+                        
+                        openBannerModal();
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading banner for edit:', error);
+                alert('Lỗi khi tải thông tin banner');
+            }
+        }
+
+        // Delete banner
+        async function deleteBanner(bannerId) {
+            if (confirm('Bạn có chắc muốn xóa banner này?')) {
+                try {
+                    const response = await fetch('/admin/api/banners', {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ id: bannerId })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        alert(data.message);
+                        loadBanners();
+                        loadDashboardData(); // Refresh stats
+                    } else {
+                        alert('Lỗi: ' + data.error);
+                    }
+                } catch (error) {
+                    console.error('Error deleting banner:', error);
+                    alert('Lỗi khi xóa banner');
+                }
+            }
+        }
+
+        // Cache management
+        async function cleanupCache() {
+            if (confirm('Bạn có chắc muốn dọn dẹp cache cũ?')) {
+                try {
+                    const response = await fetch('/admin/api/audio/cleanup', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ 
+                            action: 'cleanup_old',
+                            max_age_hours: 24 
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    alert(data.success ? data.message : 'Lỗi: ' + data.error);
+                } catch (error) {
+                    console.error('Error cleaning cache:', error);
+                    alert('Lỗi khi dọn dẹp cache');
+                }
+            }
+        }
+
+        async function clearAllCache() {
+            if (confirm('CẢNH BÁO: Bạn có chắc muốn xóa TẤT CẢ cache? Hành động này không thể hoàn tác!')) {
+                try {
+                    const response = await fetch('/admin/api/audio/cleanup', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ 
+                            action: 'clear_all' 
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    alert(data.success ? data.message : 'Lỗi: ' + data.error);
+                } catch (error) {
+                    console.error('Error clearing cache:', error);
+                    alert('Lỗi khi xóa cache');
+                }
+            }
+        }
+
+        // Password change
+        document.getElementById('passwordForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const newPassword = document.getElementById('newPassword').value;
+            
+            try {
+                const response = await fetch('/admin/api/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        settings: {
+                            admin_password: newPassword
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('Đã cập nhật mật khẩu thành công');
+                    document.getElementById('newPassword').value = '';
+                } else {
+                    alert('Lỗi: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error changing password:', error);
+                alert('Lỗi khi đổi mật khẩu');
+            }
+        });
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('bannerModal');
+            if (event.target === modal) {
+                closeBannerModal();
+            }
+        }
+    </script>
+</body>
+</html>
