@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔧 Admin Dashboard - YouTube Subtitle Downloader</title>
+    <title>🔧 Admin Panel - YouTube Subtitle Downloader</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -37,6 +38,7 @@
             padding: 20px;
             background: #343a40;
             border-bottom: 1px solid #6c757d;
+            text-align: center;
         }
 
         .sidebar-header h2 {
@@ -226,6 +228,20 @@
             background: #545b62;
         }
 
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 0.8rem;
+        }
+
         /* Tables */
         .table-container {
             overflow-x: auto;
@@ -270,7 +286,7 @@
             font-weight: 600;
         }
 
-        /* Modal */
+        /* Modal - Fixed scrolling issue */
         .modal {
             display: none;
             position: fixed;
@@ -280,41 +296,55 @@
             width: 100%;
             height: 100%;
             background: rgba(0,0,0,0.5);
+            overflow-y: auto; /* Cho phép cuộn */
+            padding: 20px 0; /* Thêm padding */
         }
 
         .modal-content {
             background: white;
-            margin: 5% auto;
-            padding: 30px;
+            margin: 0 auto; /* Căn giữa */
+            padding: 0;
             border-radius: 8px;
             width: 90%;
             max-width: 500px;
             position: relative;
+            max-height: 90vh; /* Giới hạn chiều cao */
+            overflow-y: auto; /* Cho phép cuộn nội dung */
+            display: flex;
+            flex-direction: column;
         }
 
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            padding: 20px;
+            border-bottom: 1px solid #dee2e6;
+            flex-shrink: 0; /* Không co lại */
+            background: white;
+            position: sticky;
+            top: 0;
+            z-index: 1;
         }
 
-        .modal-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: #495057;
+        .modal-body {
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
         }
 
-        .close {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #6c757d;
-        }
-
-        .close:hover {
-            color: #495057;
+        /* Action buttons luôn hiển thị */
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            flex-shrink: 0; /* Không co lại */
+            position: sticky;
+            bottom: 0;
         }
 
         /* Form */
@@ -349,11 +379,106 @@
             min-height: 80px;
         }
 
+        .file-upload-area {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .file-upload-area:hover {
+            border-color: #007bff;
+            background: rgba(0,123,255,0.05);
+        }
+
         /* Action buttons */
         .action-buttons {
             display: flex;
             gap: 10px;
             margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        /* Cache info */
+        .cache-info {
+            background: linear-gradient(135deg, #17a2b8, #20c997);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .cache-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .cache-stat {
+            text-align: center;
+        }
+
+        .cache-stat .number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .cache-stat .label {
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
+
+        /* Auto cleanup status */
+        .auto-cleanup-status {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+
+        /* Loading spinner */
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Notifications */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 4px;
+            color: white;
+            font-weight: 500;
+            z-index: 3000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .notification.success {
+            background: #28a745;
+        }
+
+        .notification.error {
+            background: #dc3545;
+        }
+
+        .notification.info {
+            background: #17a2b8;
         }
 
         /* Responsive */
@@ -375,21 +500,6 @@
                 grid-template-columns: 1fr;
             }
         }
-
-        /* Loading spinner */
-        .loading {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
     </style>
 </head>
 <body>
@@ -400,19 +510,22 @@
         </div>
         <div class="sidebar-menu">
             <button class="menu-item active" onclick="showSection('dashboard')">
-                📊 Dashboard
+                <i class="fas fa-chart-pie"></i> Dashboard
             </button>
             <button class="menu-item" onclick="showSection('visitors')">
-                👥 Visitors
-            </button>
-            <button class="menu-item" onclick="showSection('banners')">
-                📢 Banners
+                <i class="fas fa-users"></i> User Data
             </button>
             <button class="menu-item" onclick="showSection('downloads')">
-                📥 Downloads
+                <i class="fas fa-download"></i> Download Stats
+            </button>
+            <button class="menu-item" onclick="showSection('cache')">
+                <i class="fas fa-database"></i> Cache
+            </button>
+            <button class="menu-item" onclick="showSection('banners')">
+                <i class="fas fa-bullhorn"></i> Banners
             </button>
             <button class="menu-item" onclick="showSection('settings')">
-                ⚙️ Settings
+                <i class="fas fa-cog"></i> Settings
             </button>
         </div>
     </div>
@@ -441,8 +554,8 @@
                 <div class="stat-card">
                     <div class="stat-icon downloads">📥</div>
                     <div class="stat-info">
-                        <h3 id="todayDownloads">--</h3>
-                        <p>Lượt tải hôm nay</p>
+                        <h3 id="totalDownloads">--</h3>
+                        <p>Tổng lượt tải</p>
                     </div>
                 </div>
                 <div class="stat-card">
@@ -465,7 +578,7 @@
         <!-- Visitors Section -->
         <div id="visitors-section" class="content-section" style="display: none;">
             <div class="section-header">
-                <h2>👥 Quản lý Visitors</h2>
+                <h2>👥 User Data</h2>
                 <button class="btn btn-secondary" onclick="refreshVisitors()">🔄 Refresh</button>
             </div>
             <div class="table-container">
@@ -476,14 +589,13 @@
                             <th>IP Address</th>
                             <th>User Agent</th>
                             <th>First Visit</th>
-                            <th>Last Activity</th>
                             <th>Page Views</th>
                             <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td colspan="7" style="text-align: center; color: #6c757d;">
+                            <td colspan="6" style="text-align: center; color: #6c757d;">
                                 Đang tải dữ liệu...
                             </td>
                         </tr>
@@ -492,13 +604,117 @@
             </div>
         </div>
 
+        <!-- Downloads Section -->
+        <div id="downloads-section" class="content-section" style="display: none;">
+            <div class="section-header">
+                <h2>📥 Download Statistics</h2>
+                <button class="btn btn-secondary" onclick="refreshDownloads()">🔄 Refresh</button>
+            </div>
+            <div class="table-container">
+                <table class="table" id="downloadsTable">
+                    <thead>
+                        <tr>
+                            <th>Video Title</th>
+                            <th>Language</th>
+                            <th>Format</th>
+                            <th>Downloads</th>
+                            <th>Last Download</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: #6c757d;">
+                                Đang tải dữ liệu...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Cache Section - Auto Cleanup Settings -->
+        <div id="cache-section" class="content-section" style="display: none;">
+            <div class="section-header">
+                <h2>🧹 Cache Management</h2>
+                <button class="btn btn-secondary" onclick="refreshCacheInfo()">🔄 Refresh</button>
+            </div>
+
+            <div class="cache-info" id="cacheInfo">
+                <h3><i class="fas fa-info-circle"></i> Thông tin Cache</h3>
+                <div class="cache-stats">
+                    <div class="cache-stat">
+                        <div class="number" id="cacheFiles">--</div>
+                        <div class="label">Files</div>
+                    </div>
+                    <div class="cache-stat">
+                        <div class="number" id="cacheSize">--</div>
+                        <div class="label">Size (MB)</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 20px;">
+                <!-- Manual Cache Cleanup -->
+                <div>
+                    <h3>🧹 Dọn dẹp thủ công</h3>
+                    <p style="margin-bottom: 20px; color: #6c757d;">
+                        Xóa cache ngay lập tức
+                    </p>
+                    <div class="action-buttons" style="justify-content: flex-start;">
+                        <button class="btn btn-warning" onclick="cleanupCache()">
+                            <i class="fas fa-broom"></i> Dọn dẹp Cache cũ
+                        </button>
+                        <button class="btn btn-danger" onclick="clearAllCache()">
+                            <i class="fas fa-trash"></i> Xóa tất cả
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Auto Cleanup Settings -->
+                <div>
+                    <h3>⏰ Tự động xóa định kỳ</h3>
+                    <p style="margin-bottom: 15px; color: #6c757d;">
+                        Tự động xóa toàn bộ cache theo chu kỳ
+                    </p>
+                    
+                    <div class="form-group">
+                        <label>Khoảng thời gian (phút):</label>
+                        <input type="number" class="form-input" id="autoCleanupInterval" 
+                               min="30" max="1440" value="60" placeholder="Nhập số phút">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="autoCleanupEnabled" style="margin-right: 8px;">
+                            Bật tự động xóa định kỳ
+                        </label>
+                    </div>
+                    
+                    <button class="btn btn-success" onclick="saveAutoCleanupSettings()">
+                        <i class="fas fa-save"></i> Lưu cài đặt
+                    </button>
+                    
+                    <!-- Status Display -->
+                    <div class="auto-cleanup-status">
+                        <div style="font-weight: 600; color: #495057;">Trạng thái:</div>
+                        <div id="autoCleanupInfo" style="color: #6c757d; font-size: 0.9rem;">Chưa kích hoạt</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Banners Section -->
         <div id="banners-section" class="content-section" style="display: none;">
             <div class="section-header">
                 <h2>📢 Quản lý Banners</h2>
                 <div>
-                    <button class="btn btn-primary" onclick="openBannerModal()">➕ Thêm Banner</button>
-                    <button class="btn btn-secondary" onclick="refreshBanners()">🔄 Refresh</button>
+                    <button class="btn btn-primary" onclick="openBannerModal()">
+                        <i class="fas fa-plus"></i> Thêm Banner
+                    </button>
+                    <button class="btn btn-secondary" onclick="refreshBanners()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
                 </div>
             </div>
             <div class="table-container">
@@ -524,121 +740,162 @@
             </div>
         </div>
 
-        <!-- Downloads Section -->
-        <div id="downloads-section" class="content-section" style="display: none;">
-            <div class="section-header">
-                <h2>📥 Thống kê Downloads</h2>
-                <button class="btn btn-secondary" onclick="refreshDownloads()">🔄 Refresh</button>
-            </div>
-            <div class="table-container">
-                <table class="table" id="downloadsTable">
-                    <thead>
-                        <tr>
-                            <th>Video Title</th>
-                            <th>Format</th>
-                            <th>Download Count</th>
-                            <th>Last Download</th>
-                            <th>Video URL</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td colspan="5" style="text-align: center; color: #6c757d;">
-                                Đang tải dữ liệu...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
         <!-- Settings Section -->
         <div id="settings-section" class="content-section" style="display: none;">
             <div class="section-header">
                 <h2>⚙️ Cài đặt hệ thống</h2>
             </div>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
-                <div>
-                    <h3>🗃️ Dọn dẹp Cache</h3>
-                    <p style="margin-bottom: 15px; color: #6c757d;">
-                        Xóa các file phụ đề cũ để tiết kiệm dung lượng
-                    </p>
-                    <div class="action-buttons">
-                        <button class="btn btn-secondary" onclick="cleanupCache()">🧹 Dọn dẹp Cache</button>
-                        <button class="btn btn-danger" onclick="clearAllCache()">🗑️ Xóa tất cả</button>
+            <div style="max-width: 500px;">
+                <h3>🔐 Đổi mật khẩu Admin</h3>
+                <form id="passwordForm">
+                    <div class="form-group">
+                        <label>Mật khẩu mới:</label>
+                        <input type="password" class="form-input" id="newPassword" required 
+                               placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)">
                     </div>
-                </div>
+                    <div class="form-group">
+                        <label>Xác nhận mật khẩu:</label>
+                        <input type="password" class="form-input" id="confirmPassword" required 
+                               placeholder="Nhập lại mật khẩu mới">
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-key"></i> Cập nhật mật khẩu
+                    </button>
+                </form>
                 
-                <div>
-                    <h3>🔐 Đổi mật khẩu Admin</h3>
-                    <form id="passwordForm">
-                        <div class="form-group">
-                            <label>Mật khẩu mới:</label>
-                            <input type="password" class="form-input" id="newPassword" required placeholder="Nhập mật khẩu mới">
-                        </div>
-                        <button type="submit" class="btn btn-primary">🔑 Cập nhật</button>
-                    </form>
+                <hr style="margin: 30px 0;">
+                
+                <h3>🔧 Cài đặt khác</h3>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="maintenanceMode" style="margin-right: 8px;"> 
+                        Chế độ bảo trì
+                    </label>
+                    <small style="display: block; color: #6c757d; margin-top: 5px;">
+                        Khi bật, website sẽ hiển thị trang bảo trì cho người dùng
+                    </small>
                 </div>
+                <button class="btn btn-success" onclick="saveSettings()">
+                    <i class="fas fa-save"></i> Lưu cài đặt
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Banner Modal -->
+    <!-- Simple Banner Modal -->
     <div id="bannerModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title">📢 Thêm/Sửa Banner</h3>
+                <h3 class="modal-title">
+                    <i class="fas fa-bullhorn"></i> 
+                    <span id="modalTitle">Thêm Banner Mới</span>
+                </h3>
                 <button class="close" onclick="closeBannerModal()">&times;</button>
             </div>
-            <form id="bannerForm">
-                <input type="hidden" id="bannerId" value="">
-                
-                <div class="form-group">
-                    <label>Tiêu đề:</label>
-                    <input type="text" class="form-input" id="bannerTitle" required placeholder="Nhập tiêu đề banner">
-                </div>
-                
-                <div class="form-group">
-                    <label>Mô tả:</label>
-                    <textarea class="form-input form-textarea" id="bannerDescription" placeholder="Nhập mô tả banner"></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label>Link URL:</label>
-                    <input type="url" class="form-input" id="bannerUrl" placeholder="https://example.com">
-                </div>
-                
-                <div class="form-group">
-                    <label>Vị trí:</label>
-                    <select class="form-input" id="bannerPosition" required>
-                        <option value="left">Trái</option>
-                        <option value="right">Phải</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label>Hình ảnh:</label>
-                    <input type="file" class="form-input" id="bannerImage" accept="image/*">
-                </div>
-                
-                <div class="action-buttons">
-                    <button type="submit" class="btn btn-success">💾 Lưu</button>
-                    <button type="button" class="btn btn-secondary" onclick="closeBannerModal()">❌ Hủy</button>
-                </div>
-            </form>
+            <div class="modal-body">
+                <form id="bannerForm">
+                    <input type="hidden" id="bannerId" value="">
+                    
+                    <div class="form-group">
+                        <label>Tiêu đề: <span style="color: red;">*</span></label>
+                        <input type="text" class="form-input" id="bannerTitle" required 
+                               placeholder="Nhập tiêu đề banner">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Mô tả:</label>
+                        <textarea class="form-input form-textarea" id="bannerDescription" 
+                                  placeholder="Nhập mô tả banner (tùy chọn)"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Link URL:</label>
+                        <input type="url" class="form-input" id="bannerUrl" 
+                               placeholder="https://example.com (tùy chọn)">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Vị trí: <span style="color: red;">*</span></label>
+                        <select class="form-input" id="bannerPosition" required>
+                            <option value="">-- Chọn vị trí --</option>
+                            <option value="left">Bên trái</option>
+                            <option value="right">Bên phải</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="bannerStatus" checked style="margin-right: 8px;">
+                            Kích hoạt banner
+                        </label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Hình ảnh:</label>
+                        <div class="file-upload-area" onclick="document.getElementById('bannerImage').click()">
+                            <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: #6c757d; margin-bottom: 10px;"></i>
+                            <p>Click để chọn hình ảnh</p>
+                            <p style="font-size: 0.8rem; color: #6c757d;">PNG, JPG, JPEG, GIF, WEBP (Tối đa 16MB)</p>
+                        </div>
+                        <input type="file" id="bannerImage" accept="image/*" style="display: none;">
+                        <div id="imagePreview" style="margin-top: 15px; display: none; text-align: center;">
+                            <img id="previewImg" style="max-width: 100%; max-height: 200px; border-radius: 8px;">
+                            <br>
+                            <button type="button" onclick="removeImage()" style="margin-top: 10px;" class="btn btn-danger btn-sm">
+                                <i class="fas fa-trash"></i> Xóa ảnh
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="action-buttons">
+                        <button type="button" class="btn btn-secondary" onclick="closeBannerModal()">
+                            <i class="fas fa-times"></i> Hủy
+                        </button>
+                        <button type="submit" class="btn btn-success" id="saveBannerBtn">
+                            <i class="fas fa-save"></i> Lưu Banner
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
     <script>
+        // Global variables
+        let currentSection = 'dashboard';
+        
         // Auto refresh data every 30 seconds
-        setInterval(loadDashboardData, 30000);
+        setInterval(() => {
+            if (currentSection === 'dashboard') {
+                loadDashboardData();
+            }
+        }, 30000);
         
         // Load initial data
         document.addEventListener('DOMContentLoaded', function() {
             loadDashboardData();
             loadVisitors();
+            loadDownloads();
             loadBanners();
+            loadCacheInfo();
+            loadSettings();
+            
+            // Setup file upload preview
+            document.getElementById('bannerImage').addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    previewImage(e.target.files[0]);
+                }
+            });
+
+            // Setup password form
+            document.getElementById('passwordForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                updatePassword();
+            });
+
+            // Auto cleanup status change listener
+            document.getElementById('autoCleanupEnabled').addEventListener('change', updateAutoCleanupStatus);
         });
 
         // Show/hide sections
@@ -659,10 +916,14 @@
             // Add active class to clicked menu item
             event.target.classList.add('active');
             
+            currentSection = section;
+            
             // Load data for specific section
             if (section === 'visitors') loadVisitors();
-            if (section === 'banners') loadBanners();
             if (section === 'downloads') loadDownloads();
+            if (section === 'banners') loadBanners();
+            if (section === 'cache') loadCacheInfo();
+            if (section === 'settings') loadSettings();
         }
 
         // Load dashboard statistics
@@ -674,7 +935,7 @@
                 if (data.success) {
                     const stats = data.stats;
                     document.getElementById('activeVisitors').textContent = stats.visitors.active_now;
-                    document.getElementById('todayDownloads').textContent = stats.downloads.total_downloads;
+                    document.getElementById('totalDownloads').textContent = stats.downloads.total_downloads;
                     document.getElementById('totalVideos').textContent = stats.downloads.unique_videos;
                     document.getElementById('activeBanners').textContent = stats.banners.active_banners;
                 }
@@ -699,8 +960,7 @@
                             <td>${visitor.session_id}</td>
                             <td>${visitor.ip_address}</td>
                             <td>${visitor.user_agent}</td>
-                            <td>${new Date(visitor.first_visit).toLocaleString('vi-VN')}</td>
-                            <td>${new Date(visitor.last_activity).toLocaleString('vi-VN')}</td>
+                            <td>${formatDateTime(visitor.first_visit)}</td>
                             <td>${visitor.page_views}</td>
                             <td class="${visitor.is_active ? 'status-online' : 'status-offline'}">
                                 ${visitor.is_active ? 'ONLINE' : 'OFFLINE'}
@@ -709,16 +969,50 @@
                     });
                     
                     if (data.visitors.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #6c757d;">Chưa có dữ liệu</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #6c757d;">Chưa có dữ liệu</td></tr>';
                     }
                 }
             } catch (error) {
                 console.error('Error loading visitors:', error);
+                showNotification('error', 'Lỗi tải dữ liệu visitors');
             }
         }
 
-        function refreshVisitors() {
-            loadVisitors();
+        // Load downloads
+        async function loadDownloads() {
+            try {
+                const response = await fetch('/admin/api/downloads');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const tbody = document.querySelector('#downloadsTable tbody');
+                    tbody.innerHTML = '';
+                    
+                    data.downloads.forEach(download => {
+                        const row = tbody.insertRow();
+                        row.innerHTML = `
+                            <td>
+                                <strong>${download.video_title}</strong>
+                                <br><small style="color: #6c757d;">ID: ${download.video_id}</small>
+                            </td>
+                            <td><span style="text-transform: uppercase;">${download.language}</span></td>
+                            <td><span style="text-transform: uppercase;">${download.format}</span></td>
+                            <td><strong>${download.download_count}</strong></td>
+                            <td>${formatDateTime(download.last_download)}</td>
+                            <td>
+                                ${download.video_url ? `<a href="${download.video_url}" target="_blank" class="btn btn-primary btn-sm">YouTube</a>` : ''}
+                            </td>
+                        `;
+                    });
+                    
+                    if (data.downloads.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #6c757d;">Chưa có dữ liệu download</td></tr>';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading downloads:', error);
+                showNotification('error', 'Lỗi tải dữ liệu downloads');
+            }
         }
 
         // Load banners
@@ -742,11 +1036,11 @@
                                 ${banner.status ? 'Hoạt động' : 'Tắt'}
                             </td>
                             <td>
-                                <button class="btn btn-primary" onclick="editBanner(${banner.id})" style="margin-right: 5px; padding: 5px 10px; font-size: 0.8rem;">
-                                    ✏️ Sửa
+                                <button class="btn btn-primary btn-sm" onclick="editBanner(${banner.id})" style="margin-right: 5px;">
+                                    <i class="fas fa-edit"></i> Sửa
                                 </button>
-                                <button class="btn btn-danger" onclick="deleteBanner(${banner.id})" style="padding: 5px 10px; font-size: 0.8rem;">
-                                    🗑️ Xóa
+                                <button class="btn btn-danger btn-sm" onclick="deleteBanner(${banner.id})">
+                                    <i class="fas fa-trash"></i> Xóa
                                 </button>
                             </td>
                         `;
@@ -758,60 +1052,268 @@
                 }
             } catch (error) {
                 console.error('Error loading banners:', error);
+                showNotification('error', 'Lỗi tải dữ liệu banners');
             }
         }
 
-        function refreshBanners() {
-            loadBanners();
+        // Load cache info
+        async function loadCacheInfo() {
+            try {
+                const response = await fetch('/admin/api/cache');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const cacheInfo = data.cache_info;
+                    document.getElementById('cacheFiles').textContent = cacheInfo.total_files;
+                    document.getElementById('cacheSize').textContent = cacheInfo.total_size_mb;
+                }
+            } catch (error) {
+                console.error('Error loading cache info:', error);
+                showNotification('error', 'Lỗi tải thông tin cache');
+            }
         }
 
-        // Load downloads (placeholder)
-        async function loadDownloads() {
-            const tbody = document.querySelector('#downloadsTable tbody');
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #6c757d;">Chức năng đang phát triển...</td></tr>';
+        // Load settings
+        async function loadSettings() {
+            try {
+                const response = await fetch('/admin/api/settings');
+                const data = await response.json();
+                
+                if (data.success) {
+                    data.settings.forEach(setting => {
+                        if (setting.key === 'maintenance_mode') {
+                            document.getElementById('maintenanceMode').checked = setting.value === 'true';
+                        }
+                    });
+                    
+                    // Load auto cleanup settings
+                    loadAutoCleanupSettings();
+                }
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+
+        // Refresh functions
+        function refreshVisitors() {
+            loadVisitors();
+            showNotification('info', 'Đã làm mới dữ liệu visitors');
         }
 
         function refreshDownloads() {
             loadDownloads();
+            showNotification('info', 'Đã làm mới dữ liệu downloads');
         }
 
-        // Banner management functions
+        function refreshBanners() {
+            loadBanners();
+            showNotification('info', 'Đã làm mới dữ liệu banners');
+        }
+
+        function refreshCacheInfo() {
+            loadCacheInfo();
+            showNotification('info', 'Đã làm mới thông tin cache');
+        }
+
+        // Cache management
+        async function cleanupCache() {
+            if (!confirm('Bạn có chắc muốn dọn dẹp cache cũ?')) return;
+            
+            try {
+                const response = await fetch('/admin/api/cache', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ action: 'cleanup_old', max_age_hours: 24 })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('success', data.message);
+                    loadCacheInfo();
+                } else {
+                    showNotification('error', 'Lỗi: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error cleaning cache:', error);
+                showNotification('error', 'Lỗi khi dọn dẹp cache');
+            }
+        }
+
+        async function clearAllCache() {
+            if (!confirm('CẢNH BÁO: Bạn có chắc muốn xóa TẤT CẢ cache? Hành động này không thể hoàn tác!')) return;
+            
+            try {
+                const response = await fetch('/admin/api/cache', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ action: 'clear_all' })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('success', data.message);
+                    loadCacheInfo();
+                } else {
+                    showNotification('error', 'Lỗi: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error clearing cache:', error);
+                showNotification('error', 'Lỗi khi xóa cache');
+            }
+        }
+
+        // Auto cleanup settings
+        async function saveAutoCleanupSettings() {
+            const interval = parseInt(document.getElementById('autoCleanupInterval').value);
+            const enabled = document.getElementById('autoCleanupEnabled').checked;
+            
+            if (enabled && (!interval || interval < 30)) {
+                showNotification('error', 'Khoảng thời gian tối thiểu là 30 phút');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/admin/api/settings', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        settings: {
+                            auto_cleanup_enabled: enabled ? 'true' : 'false',
+                            cleanup_interval_minutes: interval.toString()
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('success', 'Đã lưu cài đặt tự động xóa cache');
+                    updateAutoCleanupStatus();
+                } else {
+                    showNotification('error', 'Lỗi: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error saving auto cleanup settings:', error);
+                showNotification('error', 'Lỗi khi lưu cài đặt');
+            }
+        }
+
+        // Update auto cleanup status display
+        function updateAutoCleanupStatus() {
+            const enabled = document.getElementById('autoCleanupEnabled').checked;
+            const interval = document.getElementById('autoCleanupInterval').value;
+            const statusDiv = document.getElementById('autoCleanupInfo');
+            
+            if (enabled) {
+                statusDiv.innerHTML = `<span style="color: #28a745;">✅ Đã kích hoạt</span><br>Tự động xóa mỗi ${interval} phút`;
+            } else {
+                statusDiv.innerHTML = '<span style="color: #dc3545;">❌ Chưa kích hoạt</span>';
+            }
+        }
+
+        // Load auto cleanup settings
+        async function loadAutoCleanupSettings() {
+            try {
+                const response = await fetch('/admin/api/settings');
+                const data = await response.json();
+                
+                if (data.success) {
+                    data.settings.forEach(setting => {
+                        if (setting.key === 'auto_cleanup_enabled') {
+                            document.getElementById('autoCleanupEnabled').checked = setting.value === 'true';
+                        }
+                        if (setting.key === 'cleanup_interval_minutes') {
+                            document.getElementById('autoCleanupInterval').value = setting.value || 60;
+                        }
+                    });
+                    updateAutoCleanupStatus();
+                }
+            } catch (error) {
+                console.error('Error loading auto cleanup settings:', error);
+            }
+        }
+
+        // Banner management
         function openBannerModal() {
             document.getElementById('bannerModal').style.display = 'block';
             document.getElementById('bannerForm').reset();
             document.getElementById('bannerId').value = '';
+            document.getElementById('modalTitle').textContent = 'Thêm Banner Mới';
+            document.getElementById('bannerStatus').checked = true;
+            hideImagePreview();
+            
+            // Reset select về giá trị mặc định
+            document.getElementById('bannerPosition').value = '';
         }
 
         function closeBannerModal() {
             document.getElementById('bannerModal').style.display = 'none';
+            hideImagePreview();
         }
 
-        // Banner form submission - Updated with better error handling
+        function previewImage(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                hideImagePreview();
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById('imagePreview');
+                const img = document.getElementById('previewImg');
+                img.src = e.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function hideImagePreview() {
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('bannerImage').value = '';
+        }
+
+        function removeImage() {
+            hideImagePreview();
+            showNotification('info', 'Đã xóa hình ảnh');
+        }
+
+        // Banner form submission
         document.getElementById('bannerForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const bannerId = document.getElementById('bannerId').value;
-            const submitBtn = e.target.querySelector('button[type="submit"]');
-            const originalText = submitBtn.textContent;
+            const submitBtn = document.getElementById('saveBannerBtn');
+            const originalText = submitBtn.innerHTML;
             
-            // Show loading
+            const title = document.getElementById('bannerTitle').value.trim();
+            const position = document.getElementById('bannerPosition').value;
+            
+            if (!title) {
+                showNotification('error', 'Vui lòng nhập tiêu đề banner');
+                return;
+            }
+            
+            if (!position) {
+                showNotification('error', 'Vui lòng chọn vị trí hiển thị');
+                return;
+            }
+            
             submitBtn.innerHTML = '<span class="loading"></span> Đang lưu...';
             submitBtn.disabled = true;
             
             try {
-                // Prepare banner data
                 const bannerData = {
-                    title: document.getElementById('bannerTitle').value,
-                    description: document.getElementById('bannerDescription').value,
-                    link_url: document.getElementById('bannerUrl').value,
-                    position: document.getElementById('bannerPosition').value,
-                    status: true
+                    title: title,
+                    description: document.getElementById('bannerDescription').value.trim(),
+                    link_url: document.getElementById('bannerUrl').value.trim(),
+                    position: position,
+                    status: document.getElementById('bannerStatus').checked
                 };
                 
-                // Handle image upload first if there's an image
                 const imageFile = document.getElementById('bannerImage').files[0];
                 if (imageFile) {
-                    console.log('Uploading image...'); // Debug log
+                    if (imageFile.size > 16 * 1024 * 1024) {
+                        throw new Error('File quá lớn. Kích thước tối đa 16MB');
+                    }
                     
                     const formData = new FormData();
                     formData.append('image', imageFile);
@@ -821,193 +1323,146 @@
                         body: formData
                     });
                     
-                    console.log('Upload response status:', imageResponse.status); // Debug log
-                    
-                    if (!imageResponse.ok) {
-                        throw new Error(`Upload failed with status: ${imageResponse.status}`);
-                    }
-                    
-                    const imageResponseText = await imageResponse.text();
-                    console.log('Upload response text:', imageResponseText); // Debug log
-                    
-                    let imageData;
-                    try {
-                        imageData = JSON.parse(imageResponseText);
-                    } catch (parseError) {
-                        console.error('Failed to parse upload response:', imageResponseText);
-                        throw new Error('Server returned invalid response for image upload');
-                    }
+                    const imageData = await imageResponse.json();
                     
                     if (imageData.success) {
                         bannerData.image_path = imageData.image_path;
                     } else {
-                        throw new Error('Image upload failed: ' + imageData.error);
+                        throw new Error('Upload hình ảnh thất bại: ' + imageData.error);
                     }
                 }
                 
-                // Add banner ID if editing
                 if (bannerId) {
                     bannerData.id = parseInt(bannerId);
                 }
                 
-                console.log('Saving banner data:', bannerData); // Debug log
-                
-                // Save banner
                 const method = bannerId ? 'PUT' : 'POST';
                 const bannerResponse = await fetch('/admin/api/banners', {
                     method: method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(bannerData)
                 });
                 
-                console.log('Banner save response status:', bannerResponse.status); // Debug log
-                
-                if (!bannerResponse.ok) {
-                    throw new Error(`Banner save failed with status: ${bannerResponse.status}`);
-                }
-                
-                const bannerResponseText = await bannerResponse.text();
-                console.log('Banner save response text:', bannerResponseText); // Debug log
-                
-                let result;
-                try {
-                    result = JSON.parse(bannerResponseText);
-                } catch (parseError) {
-                    console.error('Failed to parse banner response:', bannerResponseText);
-                    throw new Error('Server returned invalid response for banner save');
-                }
+                const result = await bannerResponse.json();
                 
                 if (result.success) {
-                    alert(result.message);
+                    showNotification('success', result.message);
                     closeBannerModal();
                     loadBanners();
                     loadDashboardData();
                 } else {
-                    throw new Error(result.error || 'Unknown error occurred');
+                    throw new Error(result.error || 'Lỗi không xác định');
                 }
                 
             } catch (error) {
                 console.error('Error saving banner:', error);
-                alert('Lỗi khi lưu banner: ' + error.message);
+                showNotification('error', error.message);
             } finally {
-                // Reset button
-                submitBtn.textContent = originalText;
+                submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
             }
         });
 
-
         // Edit banner
         async function editBanner(bannerId) {
             try {
+                console.log('Editing banner ID:', bannerId); // Debug log
+                
                 const response = await fetch('/admin/api/banners');
                 const data = await response.json();
                 
+                console.log('Banners data:', data); // Debug log
+                
                 if (data.success) {
                     const banner = data.banners.find(b => b.id === bannerId);
+                    console.log('Found banner:', banner); // Debug log
+                    
                     if (banner) {
-                        document.getElementById('bannerId').value = banner.id;
-                        document.getElementById('bannerTitle').value = banner.title;
-                        document.getElementById('bannerDescription').value = banner.description || '';
-                        document.getElementById('bannerUrl').value = banner.link_url || '';
-                        document.getElementById('bannerPosition').value = banner.position;
+                        // Hiển thị modal trước
+                        document.getElementById('bannerModal').style.display = 'block';
                         
-                        openBannerModal();
+                        // Reset form trước
+                        document.getElementById('bannerForm').reset();
+                        
+                        // Sau đó mới set dữ liệu
+                        setTimeout(() => {
+                            document.getElementById('bannerId').value = banner.id;
+                            document.getElementById('bannerTitle').value = banner.title || '';
+                            document.getElementById('bannerDescription').value = banner.description || '';
+                            document.getElementById('bannerUrl').value = banner.link_url || '';
+                            document.getElementById('bannerPosition').value = banner.position || 'left';
+                            document.getElementById('bannerStatus').checked = banner.status;
+                            
+                            document.getElementById('modalTitle').textContent = 'Chỉnh sửa Banner';
+                            
+                            // Hiển thị ảnh nếu có
+                            if (banner.image_path) {
+                                const preview = document.getElementById('imagePreview');
+                                const img = document.getElementById('previewImg');
+                                img.src = banner.image_path;
+                                preview.style.display = 'block';
+                            } else {
+                                hideImagePreview();
+                            }
+                        }, 100);
+                        
+                    } else {
+                        showNotification('error', 'Không tìm thấy banner với ID: ' + bannerId);
                     }
+                } else {
+                    showNotification('error', 'Lỗi tải dữ liệu: ' + data.error);
                 }
             } catch (error) {
                 console.error('Error loading banner for edit:', error);
-                alert('Lỗi khi tải thông tin banner');
+                showNotification('error', 'Lỗi khi tải thông tin banner: ' + error.message);
             }
         }
+
 
         // Delete banner
         async function deleteBanner(bannerId) {
-            if (confirm('Bạn có chắc muốn xóa banner này?')) {
-                try {
-                    const response = await fetch('/admin/api/banners', {
-                        method: 'DELETE',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ id: bannerId })
-                    });
-                    
-                    const data = await response.json();
-                    if (data.success) {
-                        alert(data.message);
-                        loadBanners();
-                        loadDashboardData(); // Refresh stats
-                    } else {
-                        alert('Lỗi: ' + data.error);
-                    }
-                } catch (error) {
-                    console.error('Error deleting banner:', error);
-                    alert('Lỗi khi xóa banner');
-                }
-            }
-        }
-
-        // Cache management
-        async function cleanupCache() {
-            if (confirm('Bạn có chắc muốn dọn dẹp cache cũ?')) {
-                try {
-                    const response = await fetch('/admin/api/audio/cleanup', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ 
-                            action: 'cleanup_old',
-                            max_age_hours: 24 
-                        })
-                    });
-                    
-                    const data = await response.json();
-                    alert(data.success ? data.message : 'Lỗi: ' + data.error);
-                } catch (error) {
-                    console.error('Error cleaning cache:', error);
-                    alert('Lỗi khi dọn dẹp cache');
-                }
-            }
-        }
-
-        async function clearAllCache() {
-            if (confirm('CẢNH BÁO: Bạn có chắc muốn xóa TẤT CẢ cache? Hành động này không thể hoàn tác!')) {
-                try {
-                    const response = await fetch('/admin/api/audio/cleanup', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ 
-                            action: 'clear_all' 
-                        })
-                    });
-                    
-                    const data = await response.json();
-                    alert(data.success ? data.message : 'Lỗi: ' + data.error);
-                } catch (error) {
-                    console.error('Error clearing cache:', error);
-                    alert('Lỗi khi xóa cache');
-                }
-            }
-        }
-
-        // Password change
-        document.getElementById('passwordForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
+            if (!confirm('Bạn có chắc muốn xóa banner này?')) return;
             
+            try {
+                const response = await fetch('/admin/api/banners', {
+                    method: 'DELETE',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ id: bannerId })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('success', data.message);
+                    loadBanners();
+                    loadDashboardData();
+                } else {
+                    showNotification('error', 'Lỗi: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error deleting banner:', error);
+                showNotification('error', 'Lỗi khi xóa banner');
+            }
+        }
+
+        // Update password
+        async function updatePassword() {
             const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (newPassword.length < 6) {
+                showNotification('error', 'Mật khẩu phải có ít nhất 6 ký tự');
+                return;
+            }
+            
+            if (newPassword !== confirmPassword) {
+                showNotification('error', 'Mật khẩu xác nhận không khớp');
+                return;
+            }
             
             try {
                 const response = await fetch('/admin/api/settings', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         settings: {
                             admin_password: newPassword
@@ -1017,16 +1472,83 @@
                 
                 const data = await response.json();
                 if (data.success) {
-                    alert('Đã cập nhật mật khẩu thành công');
+                    showNotification('success', 'Đã cập nhật mật khẩu thành công');
                     document.getElementById('newPassword').value = '';
+                    document.getElementById('confirmPassword').value = '';
+                    
+                    showNotification('info', 'Vui lòng đăng nhập lại với mật khẩu mới');
+                    setTimeout(() => {
+                        window.location.href = '/admin/logout';
+                    }, 2000);
                 } else {
-                    alert('Lỗi: ' + data.error);
+                    showNotification('error', 'Lỗi: ' + data.error);
                 }
             } catch (error) {
                 console.error('Error changing password:', error);
-                alert('Lỗi khi đổi mật khẩu');
+                showNotification('error', 'Lỗi khi đổi mật khẩu');
             }
-        });
+        }
+
+        // Save settings
+        async function saveSettings() {
+            try {
+                const response = await fetch('/admin/api/settings', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        settings: {
+                            maintenance_mode: document.getElementById('maintenanceMode').checked ? 'true' : 'false'
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('success', 'Đã lưu cài đặt thành công');
+                } else {
+                    showNotification('error', 'Lỗi: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                showNotification('error', 'Lỗi khi lưu cài đặt');
+            }
+        }
+
+        // Utility functions
+        function formatDateTime(dateString) {
+            if (!dateString) return 'N/A';
+            
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleString('vi-VN');
+            } catch (error) {
+                return dateString;
+            }
+        }
+
+        function showNotification(type, message, duration = 5000) {
+            const existingNotifications = document.querySelectorAll('.notification');
+            existingNotifications.forEach(notification => {
+                notification.remove();
+            });
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                ${message}
+                <button onclick="this.parentElement.remove()" style="background: none; border: none; color: white; margin-left: 15px; cursor: pointer; float: right;">
+                    &times;
+                </button>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, duration);
+        }
 
         // Close modal when clicking outside
         window.onclick = function(event) {

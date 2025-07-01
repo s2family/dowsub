@@ -14,9 +14,38 @@ from functools import wraps
 import uuid
 import hashlib
 from urllib.parse import urlparse, parse_qs
+import secrets
+from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
+import logging
+from contextlib import contextmanager
+import mimetypes
+from PIL import Image
+import io
 
 app = Flask(__name__)
-app.secret_key = 'downsub-secret-key-change-in-production'
+app.secret_key = secrets.token_hex(32)
+
+# ===== LOGGING SETUP =====
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('app.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# ===== CONFIGURATION =====
+UPLOAD_FOLDER = os.path.join('static', 'uploads', 'banners')
+MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+SUBTITLE_CACHE_DIR = "subtitle_cache"
+
+# Create directories
+os.makedirs(SUBTITLE_CACHE_DIR, exist_ok=True)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ===== DATABASE SETUP =====
 def init_db():
@@ -80,12 +109,9 @@ def init_db():
     # Insert default settings
     default_settings = [
         ('admin_username', 'admin', 'Admin username'),
-        ('admin_password', 'admin123', 'Admin password'),
-        ('max_subtitle_cache', '100', 'Maximum subtitle files to cache'),
-        ('cleanup_interval_hours', '24', 'Hours to keep subtitle files'),
-        ('auto_cleanup_enabled', 'true', 'Enable automatic cleanup'),
+        ('admin_password_hash', generate_password_hash('admin123'), 'Admin password hash'),
         ('site_title', 'YouTube Subtitle Downloader', 'Site title'),
-        ('site_description', 'Tải phụ đề YouTube miễn phí - Hỗ trợ định dạng SRT và TXT chất lượng cao', 'Site description')
+        ('maintenance_mode', 'false', 'Maintenance mode')
     ]
     
     for key, value, desc in default_settings:
@@ -97,10 +123,6 @@ def init_db():
 
 # Initialize database
 init_db()
-
-# ===== SUBTITLE CACHE DIRECTORY =====
-SUBTITLE_CACHE_DIR = "subtitle_cache"
-os.makedirs(SUBTITLE_CACHE_DIR, exist_ok=True)
 
 # ===== VISITOR TRACKING =====
 class VisitorTracker:
@@ -169,7 +191,7 @@ class VisitorTracker:
                 conn.close()
                 
             except Exception as e:
-                print(f"Visitor cleanup error: {e}")
+                logger.error(f"Visitor cleanup error: {e}")
 
 visitor_tracker = VisitorTracker()
 
@@ -179,24 +201,22 @@ class YouTubeSubtitleExtractor:
         self.setup_ytdlp()
     
     def setup_ytdlp(self):
-        """Setup yt-dlp for subtitle extraction"""
         try:
             import yt_dlp
             self.ytdlp_available = True
-            print("✅ yt-dlp is available")
+            logger.info("✅ yt-dlp is available")
         except ImportError:
-            print("⚠️ Installing yt-dlp...")
+            logger.info("⚠️ Installing yt-dlp...")
             try:
                 subprocess.check_call([sys.executable, "-m", "pip", "install", "yt-dlp"])
                 import yt_dlp
                 self.ytdlp_available = True
-                print("✅ yt-dlp installed successfully")
+                logger.info("✅ yt-dlp installed successfully")
             except Exception as e:
-                print(f"❌ Failed to install yt-dlp: {e}")
+                logger.error(f"❌ Failed to install yt-dlp: {e}")
                 self.ytdlp_available = False
     
     def extract_video_id(self, url):
-        """Extract YouTube video ID from URL"""
         patterns = [
             r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)',
             r'youtube\.com\/watch\?.*v=([^&\n?#]+)'
@@ -210,7 +230,6 @@ class YouTubeSubtitleExtractor:
         return None
     
     def get_video_info(self, video_url):
-        """Get video information and available subtitles"""
         if not self.ytdlp_available:
             return None, "yt-dlp not available"
         
@@ -232,7 +251,6 @@ class YouTubeSubtitleExtractor:
                     'id': info.get('id'),
                     'title': info.get('title'),
                     'duration': info.get('duration'),
-                    'upload_date': info.get('upload_date'),
                     'uploader': info.get('uploader'),
                     'view_count': info.get('view_count'),
                     'thumbnail': info.get('thumbnail'),
@@ -244,7 +262,7 @@ class YouTubeSubtitleExtractor:
                 
                 available_subs = {}
                 
-                # Manual subtitles (higher priority)
+                # Manual subtitles
                 for lang, subs in subtitles.items():
                     available_subs[lang] = {
                         'type': 'manual',
@@ -269,7 +287,6 @@ class YouTubeSubtitleExtractor:
             return None, str(e)
     
     def download_subtitle(self, video_url, language='vi', format='srt'):
-        """Download subtitle for specific language and format"""
         if not self.ytdlp_available:
             return None, "yt-dlp not available"
         
@@ -280,7 +297,6 @@ class YouTubeSubtitleExtractor:
             if not video_id:
                 return None, "Invalid YouTube URL"
             
-            # Create unique filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"{video_id}_{language}_{format}_{timestamp}"
             output_path = os.path.join(SUBTITLE_CACHE_DIR, filename)
@@ -292,7 +308,7 @@ class YouTubeSubtitleExtractor:
                 'writeautomaticsub': True,
                 'skip_download': True,
                 'subtitleslangs': [language],
-                'subtitlesformat': 'vtt',  # Download as VTT first, then convert
+                'subtitlesformat': 'vtt',
                 'outtmpl': output_path,
             }
             
@@ -302,7 +318,6 @@ class YouTubeSubtitleExtractor:
             # Find the downloaded VTT file
             vtt_file = f"{output_path}.{language}.vtt"
             if not os.path.exists(vtt_file):
-                # Try automatic captions
                 vtt_file = f"{output_path}.{language}.{language}.vtt"
             
             if not os.path.exists(vtt_file):
@@ -315,7 +330,6 @@ class YouTubeSubtitleExtractor:
                 with open(srt_file, 'w', encoding='utf-8') as f:
                     f.write(srt_content)
                 
-                # Clean up VTT file
                 if os.path.exists(vtt_file):
                     os.remove(vtt_file)
                 
@@ -327,7 +341,6 @@ class YouTubeSubtitleExtractor:
                 with open(txt_file, 'w', encoding='utf-8') as f:
                     f.write(txt_content)
                 
-                # Clean up VTT file
                 if os.path.exists(vtt_file):
                     os.remove(vtt_file)
                 
@@ -337,12 +350,10 @@ class YouTubeSubtitleExtractor:
             return None, str(e)
     
     def convert_vtt_to_srt(self, vtt_file):
-        """Convert VTT subtitle to SRT format - Fixed duplicate issue"""
         try:
             with open(vtt_file, 'r', encoding='utf-8') as f:
                 vtt_content = f.read()
             
-            # Parse VTT and convert to SRT
             lines = vtt_content.split('\n')
             srt_entries = []
             
@@ -350,49 +361,32 @@ class YouTubeSubtitleExtractor:
             while i < len(lines):
                 line = lines[i].strip()
                 
-                # Skip header and empty lines
                 if not line or line.startswith('WEBVTT') or line.startswith('Kind:') or line.startswith('Language:') or line.startswith('NOTE'):
                     i += 1
                     continue
                 
-                # Check if line contains timestamp
                 if '-->' in line and ':' in line:
-                    # Clean timestamp line - remove VTT styling
-                    timestamp_line = re.sub(r' align:\w+', '', line)
-                    timestamp_line = re.sub(r' position:\d+%', '', timestamp_line)
-                    timestamp_line = re.sub(r' size:\d+%', '', timestamp_line)
-                    timestamp_line = re.sub(r' line:[^\s]+', '', timestamp_line)
-                    timestamp_line = timestamp_line.strip()
-                    
-                    # Convert dots to commas for SRT format
+                    timestamp_line = re.sub(r' align:\w+| position:\d+%| size:\d+%| line:[^\s]+', '', line).strip()
                     timestamp_line = timestamp_line.replace('.', ',')
                     
-                    # Collect all text for this subtitle block
                     text_lines = []
                     i += 1
                     
-                    # Read text lines until we hit empty line or next timestamp
                     while i < len(lines):
                         text_line = lines[i].strip()
                         
-                        # Stop at empty line or next timestamp
                         if not text_line or ('-->' in text_line and ':' in text_line):
                             break
                         
-                        # Remove HTML tags
                         clean_text = re.sub(r'<[^>]+>', '', text_line).strip()
-                        
                         if clean_text:
                             text_lines.append(clean_text)
                         
                         i += 1
                     
-                    # Only add if we have text and timestamp is valid
                     if text_lines and '-->' in timestamp_line:
-                        # Join all text lines and remove duplicates
                         full_text = ' '.join(text_lines)
                         
-                        # Skip if this subtitle block already exists
                         duplicate = False
                         for existing_entry in srt_entries:
                             if existing_entry['text'] == full_text:
@@ -409,27 +403,24 @@ class YouTubeSubtitleExtractor:
                 else:
                     i += 1
             
-            # Generate SRT content
             srt_lines = []
             for index, entry in enumerate(srt_entries, 1):
                 srt_lines.append(str(index))
                 srt_lines.append(entry['timestamp'])
                 srt_lines.append(entry['text'])
-                srt_lines.append('')  # Empty line
+                srt_lines.append('')
             
             return '\n'.join(srt_lines)
             
         except Exception as e:
-            print(f"VTT to SRT conversion error: {e}")
+            logger.error(f"VTT to SRT conversion error: {e}")
             return ""
 
     def convert_vtt_to_txt(self, vtt_file):
-        """Convert VTT subtitle to plain text format - Fixed duplicate issue"""
         try:
             with open(vtt_file, 'r', encoding='utf-8') as f:
                 vtt_content = f.read()
             
-            # Extract unique sentences
             lines = vtt_content.split('\n')
             sentences = []
             seen_sentences = set()
@@ -437,27 +428,22 @@ class YouTubeSubtitleExtractor:
             for line in lines:
                 line = line.strip()
                 
-                # Skip headers, timestamps, and empty lines
                 if (not line or 
                     line.startswith('WEBVTT') or 
                     line.startswith('Kind:') or 
                     line.startswith('Language:') or 
                     line.startswith('NOTE') or
                     '-->' in line or
-                    ':' in line and len(line.split(':')) >= 3):  # Skip timestamp lines
+                    ':' in line and len(line.split(':')) >= 3):
                     continue
                 
-                # Clean HTML tags
                 clean_line = re.sub(r'<[^>]+>', '', line).strip()
                 
                 if clean_line and clean_line not in seen_sentences:
                     seen_sentences.add(clean_line)
                     sentences.append(clean_line)
             
-            # Join sentences and split by common sentence endings
             full_text = ' '.join(sentences)
-            
-            # Split into proper sentences
             sentence_endings = re.split(r'[.!?]+\s+', full_text)
             final_sentences = []
             
@@ -469,11 +455,9 @@ class YouTubeSubtitleExtractor:
             return '\n'.join(final_sentences)
             
         except Exception as e:
-            print(f"VTT to TXT conversion error: {e}")
+            logger.error(f"VTT to TXT conversion error: {e}")
             return ""
 
-
-# Initialize subtitle extractor
 subtitle_extractor = YouTubeSubtitleExtractor()
 
 # ===== ADMIN AUTHENTICATION =====
@@ -485,8 +469,8 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# ===== UTILITY FUNCTIONS =====
 def get_banners(position=None):
-    """Get banners from database"""
     try:
         conn = sqlite3.connect('subtitle_app.db')
         cursor = conn.cursor()
@@ -513,42 +497,97 @@ def get_banners(position=None):
                 'created_at': banner[8]
             })
         
-        print(f"📢 Loaded {len(banner_list)} banners for position: {position}")
         return banner_list
         
     except Exception as e:
-        print(f"❌ Error getting banners: {e}")
+        logger.error(f"Error getting banners: {e}")
         return []
+
+def get_cache_info():
+    try:
+        total_files = 0
+        total_size = 0
+        
+        for filename in os.listdir(SUBTITLE_CACHE_DIR):
+            file_path = os.path.join(SUBTITLE_CACHE_DIR, filename)
+            if os.path.isfile(file_path):
+                total_files += 1
+                total_size += os.path.getsize(file_path)
+        
+        return {
+            'total_files': total_files,
+            'total_size_mb': round(total_size / (1024 * 1024), 2)
+        }
+        
+    except Exception as e:
+        logger.error(f"Cache info error: {e}")
+        return {'total_files': 0, 'total_size_mb': 0}
+
+def cleanup_cache(max_age_hours=24):
+    try:
+        current_time = time.time()
+        deleted_count = 0
+        
+        for filename in os.listdir(SUBTITLE_CACHE_DIR):
+            file_path = os.path.join(SUBTITLE_CACHE_DIR, filename)
+            if os.path.isfile(file_path):
+                file_age = current_time - os.path.getctime(file_path)
+                if file_age > (max_age_hours * 3600):
+                    try:
+                        os.remove(file_path)
+                        deleted_count += 1
+                    except:
+                        pass
+        
+        return deleted_count
+        
+    except Exception as e:
+        logger.error(f"Cache cleanup error: {e}")
+        return 0
+
+def clear_all_cache():
+    try:
+        deleted_count = 0
+        
+        for filename in os.listdir(SUBTITLE_CACHE_DIR):
+            file_path = os.path.join(SUBTITLE_CACHE_DIR, filename)
+            if os.path.isfile(file_path):
+                try:
+                    os.remove(file_path)
+                    deleted_count += 1
+                except:
+                    pass
+        
+        return deleted_count
+        
+    except Exception as e:
+        logger.error(f"Cache clear error: {e}")
+        return 0
 
 # ===== MIDDLEWARE =====
 @app.before_request
 def track_visitors():
-    """Track visitors for all requests"""
     if request.endpoint and not request.endpoint.startswith('static'):
         visitor_tracker.track_visitor(request)
 
+# ===== MAIN ROUTES =====
 @app.route('/')
 def index():
-    """Main page - YouTube Subtitle Downloader"""
     try:
-        # Get banners from database
         left_banners = get_banners('left')
         right_banners = get_banners('right')
-        
-        print(f"🏠 Homepage loaded: {len(left_banners)} left banners, {len(right_banners)} right banners")
         
         return render_template('index.html', 
                              left_banners=left_banners, 
                              right_banners=right_banners)
     except Exception as e:
-        print(f"❌ Homepage error: {e}")
+        logger.error(f"Homepage error: {e}")
         return render_template('index.html', 
                              left_banners=[], 
                              right_banners=[])
 
 @app.route('/get_video_info', methods=['POST'])
 def get_video_info():
-    """Get YouTube video information and available subtitles"""
     try:
         data = request.get_json()
         if not data:
@@ -559,14 +598,10 @@ def get_video_info():
         if not video_url:
             return jsonify({'success': False, 'message': 'URL không được để trống'})
         
-        # Validate YouTube URL
         video_id = subtitle_extractor.extract_video_id(video_url)
         if not video_id:
             return jsonify({'success': False, 'message': 'URL YouTube không hợp lệ'})
         
-        print(f"🔍 Getting info for video: {video_id}")
-        
-        # Get video info and subtitles
         video_info, error = subtitle_extractor.get_video_info(video_url)
         
         if error:
@@ -575,7 +610,6 @@ def get_video_info():
         if not video_info:
             return jsonify({'success': False, 'message': 'Không thể lấy thông tin video'})
         
-        # Check if subtitles are available
         if not video_info.get('subtitles'):
             return jsonify({
                 'success': False, 
@@ -591,12 +625,11 @@ def get_video_info():
         })
         
     except Exception as e:
-        print(f"Get video info error: {e}")
+        logger.error(f"Get video info error: {e}")
         return jsonify({'success': False, 'message': f'Lỗi server: {str(e)}'})
 
 @app.route('/download_subtitle', methods=['POST'])
 def download_subtitle():
-    """Download subtitle in specified format"""
     try:
         data = request.get_json()
         if not data:
@@ -609,7 +642,6 @@ def download_subtitle():
         if not video_url:
             return jsonify({'success': False, 'message': 'URL không được để trống'})
         
-        # Validate format - Only SRT and TXT allowed
         if format not in ['srt', 'txt']:
             return jsonify({'success': False, 'message': 'Format không hỗ trợ (chỉ hỗ trợ SRT và TXT)'})
         
@@ -617,9 +649,6 @@ def download_subtitle():
         if not video_id:
             return jsonify({'success': False, 'message': 'URL YouTube không hợp lệ'})
         
-        print(f"📥 Downloading subtitle: {video_id}, lang: {language}, format: {format}")
-        
-        # Download subtitle
         subtitle_file, error = subtitle_extractor.download_subtitle(video_url, language, format)
         
         if error:
@@ -630,13 +659,11 @@ def download_subtitle():
         
         # Track download in database
         try:
-            # Get video info for tracking
             video_info, _ = subtitle_extractor.get_video_info(video_url)
             
             conn = sqlite3.connect('subtitle_app.db')
             cursor = conn.cursor()
             
-            # Check if already exists
             cursor.execute('''
                 SELECT id, download_count FROM subtitle_downloads 
                 WHERE video_id = ? AND language = ? AND format = ?
@@ -645,14 +672,12 @@ def download_subtitle():
             existing = cursor.fetchone()
             
             if existing:
-                # Update download count
                 cursor.execute('''
                     UPDATE subtitle_downloads 
                     SET download_count = download_count + 1, last_downloaded = CURRENT_TIMESTAMP
                     WHERE id = ?
                 ''', (existing[0],))
             else:
-                # Insert new record
                 cursor.execute('''
                     INSERT INTO subtitle_downloads 
                     (video_id, video_title, video_url, language, format, file_size)
@@ -670,9 +695,8 @@ def download_subtitle():
             conn.close()
             
         except Exception as e:
-            print(f"Database tracking error: {e}")
+            logger.error(f"Database tracking error: {e}")
         
-        # Return file info for download
         filename = f"{video_id}_{language}.{format}"
         
         return jsonify({
@@ -686,19 +710,17 @@ def download_subtitle():
         })
         
     except Exception as e:
-        print(f"Download subtitle error: {e}")
+        logger.error(f"Download subtitle error: {e}")
         return jsonify({'success': False, 'message': f'Lỗi server: {str(e)}'})
 
 @app.route('/download_file/<filename>')
 def download_file(filename):
-    """Serve downloaded subtitle files"""
     try:
         file_path = os.path.join(SUBTITLE_CACHE_DIR, filename)
         
         if not os.path.exists(file_path):
             return "File not found", 404
         
-        # Determine original filename
         if filename.endswith('.srt'):
             download_name = filename.replace(filename.split('_')[-1], '').rstrip('_') + '.srt'
         elif filename.endswith('.txt'):
@@ -709,13 +731,12 @@ def download_file(filename):
         return send_file(file_path, as_attachment=True, download_name=download_name)
         
     except Exception as e:
-        print(f"File download error: {e}")
+        logger.error(f"File download error: {e}")
         return f"Error: {e}", 500
 
 # ===== BANNER ROUTES =====
 @app.route('/banner/click/<int:banner_id>')
 def banner_click(banner_id):
-    """Track banner clicks and redirect"""
     try:
         conn = sqlite3.connect('subtitle_app.db')
         cursor = conn.cursor()
@@ -733,13 +754,12 @@ def banner_click(banner_id):
             return redirect(url_for('index'))
             
     except Exception as e:
-        print(f"Banner click error: {e}")
+        logger.error(f"Banner click error: {e}")
         return redirect(url_for('index'))
 
 # ===== ADMIN ROUTES =====
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
-    """Admin login page"""
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -748,11 +768,11 @@ def admin_login():
         cursor = conn.cursor()
         cursor.execute('SELECT value FROM settings WHERE key = ?', ('admin_username',))
         db_username = cursor.fetchone()[0]
-        cursor.execute('SELECT value FROM settings WHERE key = ?', ('admin_password',))
-        db_password = cursor.fetchone()[0]
+        cursor.execute('SELECT value FROM settings WHERE key = ?', ('admin_password_hash',))
+        db_password_hash = cursor.fetchone()[0]
         conn.close()
         
-        if username == db_username and password == db_password:
+        if username == db_username and check_password_hash(db_password_hash, password):
             session['admin_logged_in'] = True
             session['admin_username'] = username
             return redirect(url_for('admin_dashboard'))
@@ -763,7 +783,6 @@ def admin_login():
 
 @app.route('/admin/logout')
 def admin_logout():
-    """Admin logout"""
     session.pop('admin_logged_in', None)
     session.pop('admin_username', None)
     return redirect(url_for('admin_login'))
@@ -771,19 +790,55 @@ def admin_logout():
 @app.route('/admin')
 @admin_required
 def admin_dashboard():
-    """Admin dashboard"""
     return render_template('admin.html')
 
 # ===== ADMIN API ROUTES =====
-@app.route('/admin/api/visitors')
+@app.route('/admin/api/stats')
 @admin_required
-def admin_visitors():
-    """Get visitor details"""
+def admin_stats():
     try:
         conn = sqlite3.connect('subtitle_app.db')
         cursor = conn.cursor()
         
-        # Recent visitors
+        # Active visitors
+        cutoff_time = datetime.now() - timedelta(minutes=5)
+        cursor.execute('SELECT COUNT(*) FROM visitors WHERE is_active = 1 AND last_activity > ?', (cutoff_time,))
+        active_visitors = cursor.fetchone()[0]
+        
+        # Total downloads
+        cursor.execute('SELECT SUM(download_count) FROM subtitle_downloads')
+        total_downloads = cursor.fetchone()[0] or 0
+        
+        # Total videos
+        cursor.execute('SELECT COUNT(DISTINCT video_id) FROM subtitle_downloads')
+        unique_videos = cursor.fetchone()[0]
+        
+        # Active banners
+        cursor.execute('SELECT COUNT(*) FROM banners WHERE status = 1')
+        active_banners = cursor.fetchone()[0]
+        
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'visitors': {'active_now': active_visitors},
+                'downloads': {'total_downloads': total_downloads, 'unique_videos': unique_videos},
+                'banners': {'active_banners': active_banners}
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Stats API error: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/admin/api/visitors')
+@admin_required
+def admin_visitors():
+    try:
+        conn = sqlite3.connect('subtitle_app.db')
+        cursor = conn.cursor()
+        
         cursor.execute('''
             SELECT session_id, ip_address, user_agent, first_visit, last_activity, 
                    page_views, is_active
@@ -795,14 +850,13 @@ def admin_visitors():
         visitors = []
         for row in cursor.fetchall():
             visitors.append({
-                'session_id': row[0][:8] + '...',  # Truncate for privacy
+                'session_id': row[0][:8] + '...',
                 'ip_address': row[1],
                 'user_agent': row[2][:50] + '...' if len(row[2]) > 50 else row[2],
                 'first_visit': row[3],
                 'last_activity': row[4],
                 'page_views': row[5],
-                'is_active': bool(row[6]),
-                'duration': str(datetime.fromisoformat(row[4]) - datetime.fromisoformat(row[3])) if row[4] and row[3] else 'N/A'
+                'is_active': bool(row[6])
             })
         
         conn.close()
@@ -814,19 +868,55 @@ def admin_visitors():
         })
         
     except Exception as e:
+        logger.error(f"Visitors API error: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
-# Thêm route này nếu chưa có
+@app.route('/admin/api/downloads')
+@admin_required
+def admin_downloads():
+    try:
+        conn = sqlite3.connect('subtitle_app.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT video_id, video_title, language, format, 
+                   SUM(download_count) as total_downloads,
+                   MAX(last_downloaded) as last_download,
+                   video_url
+            FROM subtitle_downloads 
+            GROUP BY video_id, language, format
+            ORDER BY total_downloads DESC 
+            LIMIT 50
+        ''')
+        
+        downloads = []
+        for row in cursor.fetchall():
+            downloads.append({
+                'video_id': row[0],
+                'video_title': row[1] or 'Unknown Video',
+                'language': row[2],
+                'format': row[3],
+                'download_count': row[4],
+                'last_download': row[5],
+                'video_url': row[6]
+            })
+        
+        conn.close()
+        
+        return jsonify({'success': True, 'downloads': downloads})
+        
+    except Exception as e:
+        logger.error(f"Downloads API error: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/admin/api/banners', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @admin_required
 def admin_banners():
-    """Banner CRUD operations"""
     try:
         conn = sqlite3.connect('subtitle_app.db')
         cursor = conn.cursor()
         
         if request.method == 'GET':
-            # Get all banners
             cursor.execute('SELECT * FROM banners ORDER BY id DESC')
             
             banners = []
@@ -847,10 +937,9 @@ def admin_banners():
             return jsonify({'success': True, 'banners': banners})
             
         elif request.method == 'POST':
-            # Create new banner
             data = request.get_json()
             if not data:
-                return jsonify({'success': False, 'error': 'No JSON data received'})
+                return jsonify({'success': False, 'error': 'No data received'})
             
             cursor.execute('''
                 INSERT INTO banners (title, description, image_path, link_url, position, status)
@@ -875,7 +964,6 @@ def admin_banners():
             })
             
         elif request.method == 'PUT':
-            # Update banner
             data = request.get_json()
             if not data or not data.get('id'):
                 return jsonify({'success': False, 'error': 'Missing banner ID'})
@@ -906,12 +994,24 @@ def admin_banners():
             })
             
         elif request.method == 'DELETE':
-            # Delete banner
             data = request.get_json()
             if not data or not data.get('id'):
                 return jsonify({'success': False, 'error': 'Missing banner ID'})
             
             banner_id = data.get('id')
+            
+            # Get image path to delete file
+            cursor.execute('SELECT image_path FROM banners WHERE id = ?', (banner_id,))
+            result = cursor.fetchone()
+            
+            if result and result[0]:
+                image_path = result[0]
+                full_path = os.path.join(app.root_path, image_path.lstrip('/'))
+                if os.path.exists(full_path):
+                    try:
+                        os.remove(full_path)
+                    except:
+                        pass
             
             cursor.execute('DELETE FROM banners WHERE id = ?', (banner_id,))
             conn.commit()
@@ -923,14 +1023,12 @@ def admin_banners():
             })
             
     except Exception as e:
-        print(f"Banner API error: {e}")  # Debug log
+        logger.error(f"Banner API error: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
-# Sửa lại route upload
 @app.route('/admin/upload', methods=['POST'])
 @admin_required  
 def admin_upload():
-    """Upload banner images"""
     try:
         if 'image' not in request.files:
             return jsonify({'success': False, 'error': 'Không có file hình ảnh'})
@@ -946,14 +1044,10 @@ def admin_upload():
         if file_extension not in allowed_extensions:
             return jsonify({'success': False, 'error': 'Định dạng file không được hỗ trợ'})
         
-        # Create upload directory
-        upload_dir = os.path.join('static', 'uploads', 'banners')
-        os.makedirs(upload_dir, exist_ok=True)
-        
         # Generate unique filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{timestamp}_{file.filename}"
-        file_path = os.path.join(upload_dir, filename)
+        filename = f"{timestamp}_{secure_filename(file.filename)}"
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
         
         # Save file
         file.save(file_path)
@@ -968,68 +1062,46 @@ def admin_upload():
         })
         
     except Exception as e:
-        print(f"Upload error: {e}")  # Debug log
+        logger.error(f"Upload error: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
-
-@app.route('/admin/api/audio/cleanup', methods=['POST'])
+@app.route('/admin/api/cache', methods=['GET', 'POST'])
 @admin_required
-def admin_audio_cleanup():
-    """Audio cleanup operations"""
+def admin_cache():
     try:
-        data = request.get_json()
-        action = data.get('action')
-        
-        if action == 'cleanup_old':
-            max_age_hours = data.get('max_age_hours', 24)
-            # Simple cleanup - remove files older than max_age_hours
-            import glob
-            current_time = time.time()
-            deleted_count = 0
+        if request.method == 'GET':
+            cache_info = get_cache_info()
+            return jsonify({'success': True, 'cache_info': cache_info})
             
-            for file_path in glob.glob(os.path.join(SUBTITLE_CACHE_DIR, "*")):
-                if os.path.isfile(file_path):
-                    file_age = current_time - os.path.getctime(file_path)
-                    if file_age > (max_age_hours * 3600):
-                        try:
-                            os.remove(file_path)
-                            deleted_count += 1
-                        except:
-                            pass
+        elif request.method == 'POST':
+            data = request.get_json()
+            action = data.get('action')
             
-            message = f'Đã xóa {deleted_count} file cache cũ hơn {max_age_hours} giờ'
+            if action == 'cleanup_old':
+                max_age_hours = data.get('max_age_hours', 24)
+                deleted_count = cleanup_cache(max_age_hours)
+                message = f'Đã xóa {deleted_count} file cache cũ hơn {max_age_hours} giờ'
+                
+            elif action == 'clear_all':
+                deleted_count = clear_all_cache()
+                message = f'Đã xóa tất cả {deleted_count} file cache'
+                
+            else:
+                return jsonify({'success': False, 'error': 'Invalid action'})
             
-        elif action == 'clear_all':
-            # Remove all files in cache directory
-            import glob
-            deleted_count = 0
+            return jsonify({
+                'success': True,
+                'message': message,
+                'deleted_count': deleted_count
+            })
             
-            for file_path in glob.glob(os.path.join(SUBTITLE_CACHE_DIR, "*")):
-                if os.path.isfile(file_path):
-                    try:
-                        os.remove(file_path)
-                        deleted_count += 1
-                    except:
-                        pass
-            
-            message = f'Đã xóa tất cả {deleted_count} file cache'
-            
-        else:
-            return jsonify({'success': False, 'error': 'Invalid action'})
-        
-        return jsonify({
-            'success': True,
-            'message': message,
-            'deleted_count': deleted_count
-        })
-        
     except Exception as e:
+        logger.error(f"Cache API error: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/admin/api/settings', methods=['GET', 'POST'])
 @admin_required
 def admin_settings():
-    """Get/Update settings"""
     try:
         conn = sqlite3.connect('subtitle_app.db')
         cursor = conn.cursor()
@@ -1038,6 +1110,9 @@ def admin_settings():
             cursor.execute('SELECT key, value, description FROM settings')
             settings = []
             for row in cursor.fetchall():
+                # Don't expose password hash
+                if row[0] == 'admin_password_hash':
+                    continue
                 settings.append({
                     'key': row[0],
                     'value': row[1],
@@ -1052,7 +1127,16 @@ def admin_settings():
             settings_to_update = data.get('settings', {})
             
             for key, value in settings_to_update.items():
-                cursor.execute('UPDATE settings SET value = ? WHERE key = ?', (value, key))
+                if key == 'admin_password':
+                    if len(value) < 6:
+                        conn.close()
+                        return jsonify({'success': False, 'error': 'Mật khẩu phải có ít nhất 6 ký tự'})
+                    
+                    password_hash = generate_password_hash(value)
+                    cursor.execute('UPDATE settings SET value = ? WHERE key = ?', 
+                                 (password_hash, 'admin_password_hash'))
+                else:
+                    cursor.execute('UPDATE settings SET value = ? WHERE key = ?', (value, key))
             
             conn.commit()
             conn.close()
@@ -1060,19 +1144,24 @@ def admin_settings():
             return jsonify({'success': True, 'message': 'Cài đặt đã được cập nhật'})
             
     except Exception as e:
+        logger.error(f"Settings API error: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
-    print("🎬 YouTube Subtitle Downloader")
+    print("🎬 YouTube Subtitle Downloader - Simplified Admin Panel")
     print("📍 Server: http://localhost:5008")
     print("🎯 Admin Panel: http://localhost:5008/admin")
     print("🔑 Default Login: admin / admin123")
-    print("✨ Features: YouTube subtitle extraction, SRT/TXT download only")
-    print("📚 Supported: Vietnamese & multiple languages")
-    print("🚫 Removed: VTT format, video descriptions")
-    print("-" * 70)
+    print("✨ Features:")
+    print("  - Dashboard with basic stats")
+    print("  - User data (visitors)")
+    print("  - Download statistics")
+    print("  - Cache management")
+    print("  - Banner management")
+    print("  - Settings (password change)")
+    print("-" * 50)
     
     try:
         app.run(debug=False, host='0.0.0.0', port=5008, threaded=True)
     except Exception as e:
-        print(f"❌ Server error: {e}")
+        logger.error(f"❌ Server error: {e}")
